@@ -1,4 +1,4 @@
-package com.hrtrack;
+servicepackage com.hrtrack;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
