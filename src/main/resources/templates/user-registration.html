@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+    <title th:text="${subject}"></title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            min-height: 100vh;
+            background-color: #0EA5E9;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', "Poppins", 'Helvetica Neue', Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .logo-container {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            display: block;
+        }
+
+        .brand-name {
+            font-size: clamp(20px, 5vw, 32px);
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1.2;
+            margin: 0;
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 40px 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-title {
+            font-size: clamp(16px, 4vw, 22px);
+            font-weight: 700;
+            color: #538be3;
+            text-align: center;
+            margin: 0 0 20px;
+            line-height: 1.3;
+        }
+
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .message {
+            font-size: clamp(13px, 3vw, 15px);
+            color: #4b5563;
+            text-align: left;
+            margin: 0 0 30px;
+            line-height: 1.7;
+        }
+
+        .info-class {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-left: 4px solid #0EA5E9;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+
+        .info-class ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 15px 0;
+        }
+
+        .info-class li {
+            font-size: clamp(13px, 3vw, 15px);
+            color: #374151;
+            line-height: 1.8;
+            margin-bottom: 12px;
+            padding-left: 28px;
+            position: relative;
+        }
+
+        .info-class li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #0EA5E9;
+            font-weight: bold;
+            font-size: 18px;
+            top: -2px;
+        }
+
+        .info-class li:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-class p {
+            font-size: clamp(13px, 3vw, 15px);
+            color: #4b5563;
+            line-height: 1.7;
+            margin: 15px 0 0 0;
+            text-align: left;
+        }
+
+        .info-class strong {
+            color: #0EA5E9;
+            font-weight: 600;
+        }
+
+        .politesse-class {
+            margin-top: 35px;
+            padding-top: 25px;
+            border-top: 2px solid #e5e7eb;
+        }
+
+        .politesse-class p {
+            font-size: clamp(13px, 3vw, 15px);
+            color: #4b5563;
+            line-height: 1.7;
+            margin: 8px 0;
+        }
+
+        .politesse-class p:first-child {
+            margin-bottom: 5px;
+        }
+
+        .politesse-class p:last-child {
+            color: #0EA5E9;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        .message strong {
+            color: #0EA5E9;
+            font-weight: 600;
+        }
+
+        .footer {
+            padding-top: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .footer-tagline {
+            font-size: clamp(10px, 2.3vw, 12px);
+            color: rgba(255, 255, 255, 0.95);
+            letter-spacing: 0.2px;
+            margin: 0 0 12px 0;
+            line-height: 1.5;
+        }
+
+        .footer-tagline span {
+            margin: 0 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .footer-tagline strong {
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .footer-note {
+            font-size: clamp(10px, 2.3vw, 12px);
+            color: rgba(255, 255, 255, 0.8);
+            margin: 0 0 10px;
+            line-height: 1.5;
+        }
+
+        .footer-copyright {
+            font-size: clamp(9px, 2vw, 11px);
+            color: rgba(255, 255, 255, 0.6);
+            margin: 0;
+        }
+
+        /* Responsive adjustments */
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                padding: 25px 12px;
+            }
+
+            .card {
+                padding: 30px 20px;
+                border-radius: 20px;
+            }
+
+            .logo {
+                width: 60px;
+                height: 60px;
+                margin-bottom: 15px;
+            }
+
+            .logo-container {
+                margin-bottom: 30px;
+            }
+
+            .info-class {
+                padding: 18px 15px;
+                border-radius: 10px;
+            }
+
+            .info-class li {
+                padding-left: 24px;
+            }
+        }
+
+        @media only screen and (max-width: 480px) {
+            .card {
+                padding: 25px 18px;
+            }
+
+            .info-class {
+                padding: 15px 12px;
+            }
+
+            .footer-tagline {
+                font-size: 13px;
+            }
+
+            .footer-tagline span {
+                margin: 0 10px;
+            }
+        }
+
+
+    </style>
+</head>
+<body style="margin: 0; padding: 0; width: 100%; min-height: 100vh; background-color: #0EA5E9;">
+    <div class="email-container">
+        <!-- Logo du site -->
+        <div class="logo-container">
+            <img src="" alt="HR Track" class="logo">
+            <h1 class="brand-name">
+                HR Track
+            </h1>
+        </div>
+
+        <!-- Carte principale -->
+        <div class="card">
+            <h2 class="card-title">&#127881; Bienvenue sur HR Track !</h2>
+
+            <p class="message">
+                Bonjour <strong th:text="${name}"></strong>,<br><br>
+                Nous vous confirmons la bonne création de votre compte sur notre plateforme <strong>HR Track</strong>
+            </p>
+
+            <div class="info-class">
+                <ul>
+                    <li>Votre compte a été créé avec succès, mais il est actuellement <strong>en attente de validation par notre administrateur</strong>.</li>
+                    <li>Cette vérification garantit la conformité de votre profil avec nos exigences.</li>
+                </ul>
+                <p>Vous recevrez un nouvel email de confirmation dans les plus brefs délais (généralement sous 24 heures) dès que votre accès sera <strong>activé</strong></p>
+            </div>
+
+            <div class="politesse-class">
+                <p>Cordialement,</p>
+                <p>L'équipe HR Track</p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p class="footer-tagline">Efficacité<span>&bull;</span>Simplicité<span>&bull;</span>Excellence</p>
+            <p class="footer-note">Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+            <p class="footer-copyright">&copy; <span th:text="${#dates.format(#dates.createNow(), 'yyyy')}">2025</span> HR Track. Tous droits réservés.</p>
+        </div>
+    </div>
+</body>
+</html>

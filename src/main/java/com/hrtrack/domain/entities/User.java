@@ -3,6 +3,8 @@ package com.hrtrack.domain.entities;
 import com.hrtrack.domain.Role;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -50,8 +52,13 @@ public class User implements UserDetails {
 
     private boolean isAccountValidated = false;
 
+    private LocalDateTime lastLogin;
+
     @Column(updatable = false)
+    @CreationTimestamp
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "user")
@@ -102,6 +109,10 @@ public class User implements UserDetails {
     @Override
     public boolean isEnabled() {
         return isAccountValidated;
+    }
+
+    public String getNomComplet() {
+        return nom + " " + prenom;
     }
 
 }

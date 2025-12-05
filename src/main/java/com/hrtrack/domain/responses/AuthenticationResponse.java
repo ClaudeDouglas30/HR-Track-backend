@@ -1,9 +1,13 @@
 package com.hrtrack.domain.responses;
 
+import com.hrtrack.domain.dtos.UserDto;
 import lombok.Builder;
 
 @Builder
 public record AuthenticationResponse(
-        String token
+        boolean success,
+        String message,
+        String token,
+        UserDto user
 ) {
 }

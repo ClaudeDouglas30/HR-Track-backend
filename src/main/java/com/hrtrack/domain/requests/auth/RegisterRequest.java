@@ -1,4 +1,4 @@
-package com.hrtrack.domain.requests;
+package com.hrtrack.domain.requests.auth;
 
 
 public record RegisterRequest(
