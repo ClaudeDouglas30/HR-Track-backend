@@ -13,15 +13,15 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name="type_conge")
+@Table(name="typeconges")
 public class TypeConge {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE,generator = "type_conge_seq")
-    @SequenceGenerator(name="type_conge_seq",sequenceName = "type_conges_sequence",allocationSize = 100)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE,generator = "typeconge_seq")
+    @SequenceGenerator(name="typeconge_seq",sequenceName = "typeconges_sequence",allocationSize = 100)
     private int id;
     private Libelle libelle;
     private int quotaAnnuel;
 
-    @OneToMany(mappedBy = "type_conge")
+    @OneToMany(mappedBy = "typeConge")
     private List<Conge> conges = new ArrayList<>();
 }

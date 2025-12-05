@@ -28,6 +28,10 @@ public class Departement {
     private List<Service> services = new ArrayList<>();
 
     @ManyToMany
-    @JoinColumn(name="departements")
+    @JoinTable(
+            name = "departement_users",
+            joinColumns = @JoinColumn(name = "departement_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
     private List<User> users = new ArrayList<>();
 }

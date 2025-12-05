@@ -44,6 +44,6 @@ public class Conge {
     private User user;
 
     @ManyToOne
-    @JoinColumn(name = "type_conge_id")
+    @JoinColumn(name = "typeconge_id")
     private TypeConge typeConge;
 }
