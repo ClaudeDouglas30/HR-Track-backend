@@ -1,6 +1,7 @@
 package com.hrtrack.exception;
 
 import com.hrtrack.domain.responses.AuthenticationResponse;
+import com.hrtrack.domain.responses.ForgotPasswordResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -42,5 +43,20 @@ public class AuthenticationException extends Exception {
                 .build();
 
         return new ResponseEntity<AuthenticationResponse>(response, HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * Gère les tokens de réinitialisation invalides ou expirés.
+     */
+    @ExceptionHandler({InvalidTokenException.class})
+    public ResponseEntity<ForgotPasswordResponse> handleInvalidTokenException(
+            InvalidTokenException ex) {
+
+        ForgotPasswordResponse response = ForgotPasswordResponse.builder()
+                .success(false)
+                .message(ex.getMessage())
+                .build();
+
+        return new ResponseEntity<ForgotPasswordResponse>(response, HttpStatus.BAD_REQUEST);
     }
 }

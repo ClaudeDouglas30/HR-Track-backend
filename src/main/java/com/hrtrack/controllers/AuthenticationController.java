@@ -4,8 +4,11 @@ package com.hrtrack.controllers;
 
 import com.hrtrack.domain.entities.User;
 import com.hrtrack.domain.requests.auth.AuthenticationRequest;
+import com.hrtrack.domain.requests.auth.ForgotPasswordRequest;
 import com.hrtrack.domain.requests.auth.RegisterRequest;
+import com.hrtrack.domain.requests.auth.ResetPasswordRequest;
 import com.hrtrack.domain.responses.AuthenticationResponse;
+import com.hrtrack.domain.responses.ForgotPasswordResponse;
 import com.hrtrack.domain.responses.RegisterResponse;
 import com.hrtrack.exception.EmailingException;
 import com.hrtrack.service.AuthenticationService;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
 
 
 /**
@@ -54,6 +58,39 @@ public class AuthenticationController {
     public ResponseEntity<AuthenticationResponse> login(@RequestBody AuthenticationRequest request) {
         AuthenticationResponse authenticationResponse = authenticationService.authenticate(request);
         return ResponseEntity.ok(authenticationResponse);
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ForgotPasswordResponse> forgotPassword(@RequestBody ForgotPasswordRequest request) throws MessagingException, EmailingException {
+
+        String email = request.email();
+        authenticationService.createPasswordResetTokenForUser(email);
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                new ForgotPasswordResponse(
+                        true,
+                        "Un email vous a été envoyé"
+                )
+        );
+    }
+
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ForgotPasswordResponse> resetPassword(@RequestBody ResetPasswordRequest request) 
+            throws MessagingException, EmailingException {
+
+        String token = request.token();
+        String password = request.password();
+
+        // Appeler le service pour réinitialiser le mot de passe
+        authenticationService.resetPasswordForUser(token, password);
+
+        // Retourner une réponse de succès
+        return ResponseEntity.ok(
+                new ForgotPasswordResponse(
+                        true,
+                        "Votre mot de passe a été réinitialisé avec succès."
+                )
+        );
     }
 
 }

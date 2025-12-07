@@ -1,17 +1,15 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="fr">
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
-    <title th:text="${subject}"></title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="x-apple-disable-message-reformatting">
+    <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+    <title th:text="${subject}">Compte activé - HR Track</title>
 
     <style>
+        /* Reset */
         * {
             margin: 0;
             padding: 0;
@@ -24,7 +22,7 @@
             width: 100%;
             min-height: 100vh;
             background-color: #0EA5E9;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', "Poppins", 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
@@ -63,7 +61,7 @@
         }
 
         .card-title {
-            font-size: clamp(18px, 4vw, 24px);
+            font-size: clamp(16px, 4vw, 22px);
             font-weight: 700;
             color: #10b981;
             text-align: center;
@@ -74,7 +72,7 @@
         .message {
             font-size: clamp(13px, 3vw, 15px);
             color: #4b5563;
-            text-align: left;
+            text-align: center;
             margin: 0 0 30px;
             line-height: 1.7;
         }
@@ -101,29 +99,40 @@
             font-weight: 700;
         }
 
-        .action-button {
-            display: inline-block;
-            background: linear-gradient(135deg, #0EA5E9 0%, #0284c7 100%);
-            color: #ffffff;
-            text-decoration: none;
-            padding: 14px 32px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: clamp(14px, 3.5vw, 16px);
-            margin: 25px 0;
-            text-align: center;
-            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
-            transition: all 0.3s ease;
-        }
-
-        .action-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(14, 165, 233, 0.4);
-        }
-
         .button-container {
             text-align: center;
             margin: 30px 0;
+        }
+
+        .action-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #0EA5E9 0%, #0284c7 100%);
+            color: #ffffff !important;
+            text-decoration: none;
+            font-size: clamp(13px, 3vw, 15px);
+            font-weight: 700;
+            padding: 14px 28px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(14, 165, 233, 0.4);
+        }
+
+        .divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 20px 0;
+            border: none;
+        }
+
+        .info-text {
+            font-size: clamp(13px, 2.8vw, 14px);
+            color: #6b7280;
+            text-align: center;
+            margin: 0 0 15px;
+        }
+
+        .info-text strong {
+            color: #0EA5E9;
+            font-weight: 600;
         }
 
         .politesse-class {
@@ -137,6 +146,7 @@
             color: #4b5563;
             line-height: 1.7;
             margin: 8px 0;
+            text-align: left;
         }
 
         .politesse-class p:first-child {
@@ -159,11 +169,17 @@
             padding-top: 40px;
         }
 
+        .footer-tagline {
+            font-size: clamp(11px, 2.5vw, 13px);
+            color: rgba(255, 255, 255, 0.95);
+            font-weight: 600;
+            margin: 0 0 12px;
+        }
+
         .footer-note {
             font-size: clamp(10px, 2.3vw, 12px);
             color: rgba(255, 255, 255, 0.8);
             margin: 0 0 20px;
-            line-height: 1.5;
         }
 
         .footer-copyright {
@@ -199,25 +215,29 @@
             }
 
             .action-button {
-                padding: 12px 28px;
-                font-size: 14px;
+                padding: 14px 26px;
             }
         }
 
         @media only screen and (max-width: 480px) {
+            .email-container {
+                padding: 20px 10px;
+            }
+
             .card {
                 padding: 25px 18px;
             }
 
-            .success-box {
-                padding: 15px 12px;
+            .action-button {
+                padding: 12px 24px;
+                font-size: 13px;
             }
         }
     </style>
 </head>
-<body style="margin: 0; padding: 0; width: 100%; min-height: 100vh; background-color: #0EA5E9;">
+<body style="margin: 0; padding: 0; width: 100%; min-height: 100vh; background-color: #0EA5E9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
     <div class="email-container">
-        <!-- Logo du site -->
+        <!-- Logo et Branding -->
         <div class="logo-container">
             <img src="" alt="HR Track" class="logo">
             <h1 class="brand-name">
@@ -227,7 +247,7 @@
 
         <!-- Carte principale -->
         <div class="card">
-            <h2 class="card-title">✅ Votre compte a été activé !</h2>
+            <h2 class="card-title">Votre compte a été activé !</h2>
 
             <p class="message">
                 Bonjour <strong th:text="${name}"></strong>,<br><br>
@@ -235,14 +255,21 @@
             </p>
 
             <div class="success-box">
-                <p>🎉 Vous pouvez maintenant accéder à toutes les fonctionnalités de la plateforme !</p>
+                <p>Vous pouvez maintenant accéder à toutes les fonctionnalités de la plateforme !</p>
             </div>
 
+            <!-- Bouton CTA -->
             <div class="button-container">
-                <a href="#" class="action-button" th:href="${loginUrl}">
+                <a th:href="${loginUrl}" class="action-button">
                     Accéder à mon compte
                 </a>
             </div>
+
+            <hr class="divider">
+
+            <p class="info-text" style="color: #9ca3af;">
+                Nous sommes ravis de vous compter parmi nos utilisateurs. N'hésitez pas à explorer toutes les fonctionnalités disponibles.
+            </p>
 
             <div class="politesse-class">
                 <p>Cordialement,</p>
@@ -252,8 +279,9 @@
 
         <!-- Footer -->
         <div class="footer">
+            <p class="footer-tagline">Efficacité &bull; Simplicité &bull; Excellence</p>
             <p class="footer-note">Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
-            <p class="footer-copyright">&copy; <span th:text="${#dates.format(#dates.createNow(), 'yyyy')}"></span> HR Track. Tous droits réservés.</p>
+            <p class="footer-copyright">&copy; <span th:text="${#dates.format(#dates.createNow(), 'yyyy')}">2025</span> HR Track. Tous droits réservés.</p>
         </div>
     </div>
 </body>

@@ -32,4 +32,17 @@ public class SendMailService implements EmailService {
 
         mailSender.send(mimeMessage);
     }
+
+    @Override
+    public void sendMail(String to, String template, Context context) throws EmailingException, MessagingException {
+        MimeMessage mimeMessage = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
+
+        String htmlContent = templateEngine.process(template, context);
+
+        helper.setTo(to);
+        helper.setText(htmlContent, true);
+
+        mailSender.send(mimeMessage);
+    }
 }

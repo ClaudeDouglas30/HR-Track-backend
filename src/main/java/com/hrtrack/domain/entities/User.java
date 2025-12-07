@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 
 
@@ -60,6 +61,11 @@ public class User implements UserDetails {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    @Column(nullable = true, updatable = true)
+    private String resetPasswordToken;
+
+    private Date resetPasswordExpiration;
 
     @OneToMany(mappedBy = "user")
     private List<LogActivity> logActivities = new ArrayList<>();

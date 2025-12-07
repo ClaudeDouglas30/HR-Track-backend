@@ -7,6 +7,7 @@ import com.hrtrack.domain.requests.auth.AuthenticationRequest;
 import com.hrtrack.domain.requests.auth.RegisterRequest;
 import com.hrtrack.domain.responses.AuthenticationResponse;
 import com.hrtrack.exception.EmailingException;
+import com.hrtrack.exception.InvalidTokenException;
 import com.hrtrack.mappers.UserMapper;
 import com.hrtrack.repository.UserRepository;
 import com.hrtrack.service.AuthenticationService;
@@ -14,6 +15,7 @@ import com.hrtrack.service.EmailService;
 import com.hrtrack.service.JwtService;
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
 
 import java.time.LocalDateTime;
+import java.util.*;
 
 
 @Service
@@ -33,6 +36,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
     private final UserMapper userMapper;
+
+    @Value("${application.frontend.url}")
+    private String frontendUrl;
 
 
     @Override
@@ -88,4 +94,73 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .user(userDto)
                 .build();
     }
+
+    @Override
+    public void createPasswordResetTokenForUser(String email) throws MessagingException, EmailingException {
+
+        String token = UUID.randomUUID().toString();
+
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(new Date());
+        cal.add(Calendar.MINUTE, 30);
+        Date expiryDate = cal.getTime();
+
+        User user = userRepository.findByEmail(email).orElseThrow();
+        user.setResetPasswordToken(token);
+        user.setResetPasswordExpiration(expiryDate);
+        userRepository.save(user);
+
+        Context context = new Context();
+        context.setVariable("token", token);
+        context.setVariable("subject", "Vous avez demandé à réinitialiser votre mot de passe - HR Track");
+        context.setVariable("resetUrl", STR."\{frontendUrl}/resetpassword?token=");
+
+        emailService.sendMail(
+                user.getEmail(),
+                "Vous avez demandé à réinitialiser votre mot de passe - HR Track",
+                "forgot-password",
+                context
+        );
+    }
+
+    @Override
+    public void resetPasswordForUser(String token, String password) throws MessagingException, EmailingException {
+
+        // Vérifier si le token existe et récupérer l'utilisateur associé
+        User user = userRepository.findByResetPasswordToken(token);
+        
+        if (user == null) {
+            throw new InvalidTokenException("Token de réinitialisation invalide ou introuvable.");
+        }
+
+        // Vérifier si le token n'est pas expiré
+        Date now = new Date();
+        if (user.getResetPasswordExpiration() == null || user.getResetPasswordExpiration().before(now)) {
+            user.setResetPasswordToken(null);
+            user.setResetPasswordExpiration(null);
+            userRepository.save(user);
+            throw new InvalidTokenException("Le token de réinitialisation a expiré. Veuillez en demander un nouveau.");
+        }
+
+        
+        user.setPassword(passwordEncoder.encode(password));
+        user.setResetPasswordToken(null);
+        user.setResetPasswordExpiration(null);
+        
+        userRepository.save(user);
+
+        // Envoyer un email de notification de changement de mot de passe
+        Context context = new Context();
+        context.setVariable("subject", "Votre mot de passe a été modifié - HR Track");
+        context.setVariable("name", user.getNomComplet());
+
+        emailService.sendMail(
+                user.getEmail(),
+                "Votre mot de passe a été modifié - HR Track",
+                "reset-password",
+                context
+        );
+    }
+
+
 }
