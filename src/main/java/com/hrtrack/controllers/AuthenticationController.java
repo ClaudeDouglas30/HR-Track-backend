@@ -3,16 +3,15 @@ package com.hrtrack.controllers;
 
 
 import com.hrtrack.domain.entities.User;
-import com.hrtrack.domain.requests.auth.AuthenticationRequest;
-import com.hrtrack.domain.requests.auth.ForgotPasswordRequest;
-import com.hrtrack.domain.requests.auth.RegisterRequest;
-import com.hrtrack.domain.requests.auth.ResetPasswordRequest;
+import com.hrtrack.domain.requests.auth.*;
 import com.hrtrack.domain.responses.AuthenticationResponse;
 import com.hrtrack.domain.responses.ForgotPasswordResponse;
+import com.hrtrack.domain.responses.RefreshTokenResponse;
 import com.hrtrack.domain.responses.RegisterResponse;
 import com.hrtrack.exception.EmailingException;
 import com.hrtrack.service.AuthenticationService;
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -81,15 +80,30 @@ public class AuthenticationController {
         String token = request.token();
         String password = request.password();
 
-        // Appeler le service pour réinitialiser le mot de passe
         authenticationService.resetPasswordForUser(token, password);
-
-        // Retourner une réponse de succès
         return ResponseEntity.ok(
                 new ForgotPasswordResponse(
                         true,
                         "Votre mot de passe a été réinitialisé avec succès."
                 )
+        );
+    }
+
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<RefreshTokenResponse> refreshToken(HttpServletRequest request) {
+
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Header Authorization invalide ou manquant");
+        }
+
+        String token = authHeader.substring(7);
+        RefreshTokenResponse response = authenticationService.refreshToken(token);
+
+        return ResponseEntity.status(response.success() ? HttpStatus.CREATED : HttpStatus.UNAUTHORIZED)
+                .body(
+                        response
         );
     }
 

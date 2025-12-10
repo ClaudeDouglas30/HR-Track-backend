@@ -25,6 +25,9 @@ public class JwtServiceImpl implements JwtService {
     @Value("${application.security.jwt.ttl}")
     private long jwtExpiration;
 
+    @Value("${application.security.jwt.refresh-tll}")
+    private long refreshTokenExpiration;
+
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
@@ -40,8 +43,17 @@ public class JwtServiceImpl implements JwtService {
         );
     }
 
+    @Override
+    public String generateRefreshToken(UserDetails userDetails) {
+        return generateRefreshToken(new HashMap<>(), userDetails);
+    }
+
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         return buildToken(extraClaims, userDetails, jwtExpiration);
+    }
+
+    public String generateRefreshToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+        return buildToken(extraClaims, userDetails, refreshTokenExpiration);
     }
 
     public long getExpirationTime() {

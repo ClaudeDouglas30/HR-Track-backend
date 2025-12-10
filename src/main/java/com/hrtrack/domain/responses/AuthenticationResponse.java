@@ -8,6 +8,7 @@ public record AuthenticationResponse(
         boolean success,
         String message,
         String token,
+        String refreshToken,
         UserDto user
 ) {
 }

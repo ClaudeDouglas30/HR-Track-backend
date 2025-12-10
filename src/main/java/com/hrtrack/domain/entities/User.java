@@ -28,7 +28,7 @@ public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE,generator = "user_seq")
     @SequenceGenerator(name="user_seq",sequenceName = "users_sequence",allocationSize = 100)
-    private int id;
+    private Long id;
 
     @Column(nullable = false)
     private String nom;
@@ -76,6 +76,9 @@ public class User implements UserDetails {
 
     @ManyToMany(mappedBy = "users")
     private List<Departement> departements = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<JwtToken>  jwtTokens = new ArrayList<>();
 
 
     @Override

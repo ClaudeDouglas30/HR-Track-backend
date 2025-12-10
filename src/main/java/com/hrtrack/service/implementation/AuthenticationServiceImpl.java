@@ -2,17 +2,21 @@ package com.hrtrack.service.implementation;
 
 import com.hrtrack.domain.Role;
 import com.hrtrack.domain.dtos.UserDto;
+import com.hrtrack.domain.entities.JwtToken;
 import com.hrtrack.domain.entities.User;
 import com.hrtrack.domain.requests.auth.AuthenticationRequest;
 import com.hrtrack.domain.requests.auth.RegisterRequest;
 import com.hrtrack.domain.responses.AuthenticationResponse;
+import com.hrtrack.domain.responses.RefreshTokenResponse;
 import com.hrtrack.exception.EmailingException;
 import com.hrtrack.exception.InvalidTokenException;
 import com.hrtrack.mappers.UserMapper;
+import com.hrtrack.repository.JwtTokenRepository;
 import com.hrtrack.repository.UserRepository;
 import com.hrtrack.service.AuthenticationService;
 import com.hrtrack.service.EmailService;
 import com.hrtrack.service.JwtService;
+import com.hrtrack.service.JwtTokenService;
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,11 +35,13 @@ import java.util.*;
 public class AuthenticationServiceImpl implements AuthenticationService {
 
     private final UserRepository userRepository;
+    private final JwtTokenService  jwtTokenService;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final EmailService emailService;
     private final UserMapper userMapper;
+    private final JwtTokenRepository jwtTokenRepository;
 
     @Value("${application.frontend.url}")
     private String frontendUrl;
@@ -84,13 +90,18 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         UserDto userDto = userMapper.toDto(user);
         final String jwt = jwtService.generateToken(user);
+        final String refreshToken = jwtService.generateRefreshToken(user);
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
+
+        jwtTokenService.revokeAllUserTokens(user);
+        jwtTokenService.saveUserToken(user, jwt, refreshToken);
 
         return AuthenticationResponse.builder()
                 .success(true)
                 .message("Connexion réussie.")
                 .token(jwt)
+                .refreshToken(refreshToken)
                 .user(userDto)
                 .build();
     }
@@ -160,6 +171,34 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 "reset-password",
                 context
         );
+    }
+
+    @Override
+    public RefreshTokenResponse refreshToken(String token) {
+        var userEmail = jwtService.extractUsername(token);
+        if (userEmail != null) {
+            var user = this.userRepository.findByEmail(userEmail)
+                    .orElseThrow();
+
+            if (jwtTokenService.isRefreshTokenValid(token)) {
+                var newToken = jwtService.generateToken(user);
+                var newRefreshToken = jwtService.generateRefreshToken(user);
+                jwtTokenService.rotateUserTokens(user, newToken, newRefreshToken, token);
+
+                return RefreshTokenResponse.builder()
+                        .success(true)
+                        .message("Token renouvelé avec succès")
+                        .token(newToken)
+                        .refreshToken(newRefreshToken)
+                        .build();
+            }
+        }
+        return RefreshTokenResponse.builder()
+                .success(false)
+                .message("Token invalide.")
+                .token(null)
+                .refreshToken(null)
+                .build();
     }
 
 

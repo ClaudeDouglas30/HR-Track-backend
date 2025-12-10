@@ -6,6 +6,7 @@ import com.hrtrack.domain.requests.auth.ForgotPasswordRequest;
 import com.hrtrack.domain.requests.auth.RegisterRequest;
 import com.hrtrack.domain.responses.AuthenticationResponse;
 import com.hrtrack.domain.responses.ForgotPasswordResponse;
+import com.hrtrack.domain.responses.RefreshTokenResponse;
 import com.hrtrack.exception.EmailingException;
 import jakarta.mail.MessagingException;
 
@@ -42,4 +43,7 @@ public interface AuthenticationService {
      * @throws EmailingException
      */
     void resetPasswordForUser(String token, String password) throws MessagingException, EmailingException;
+
+
+    RefreshTokenResponse refreshToken(String token);
 }

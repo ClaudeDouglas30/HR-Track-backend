@@ -43,6 +43,13 @@ public interface JwtService {
     String generateToken(UserDetails userDetails);
 
     /**
+     * Pour générer un refreshToken
+     * @param userDetails
+     * @return
+     */
+    String generateRefreshToken(UserDetails userDetails);
+
+    /**
      * Vérifie si le token est valide (signature et expiration).
      * @param token Le JWT
      * @param userDetails Les détails de l'utilisateur
