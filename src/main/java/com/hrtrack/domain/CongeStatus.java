@@ -1,6 +1,6 @@
 package com.hrtrack.domain;
 
-public enum Statut {
+public enum CongeStatus {
     ENATTENTE,
     ACCEPTER,
     REFUSER

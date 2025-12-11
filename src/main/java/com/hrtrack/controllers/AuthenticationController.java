@@ -4,10 +4,10 @@ package com.hrtrack.controllers;
 
 import com.hrtrack.domain.entities.User;
 import com.hrtrack.domain.requests.auth.*;
-import com.hrtrack.domain.responses.AuthenticationResponse;
-import com.hrtrack.domain.responses.ForgotPasswordResponse;
-import com.hrtrack.domain.responses.RefreshTokenResponse;
-import com.hrtrack.domain.responses.RegisterResponse;
+import com.hrtrack.domain.responses.auth.AuthenticationResponse;
+import com.hrtrack.domain.responses.auth.ForgotPasswordResponse;
+import com.hrtrack.domain.responses.auth.RefreshTokenResponse;
+import com.hrtrack.domain.responses.auth.RegisterResponse;
 import com.hrtrack.exception.EmailingException;
 import com.hrtrack.service.AuthenticationService;
 import jakarta.mail.MessagingException;

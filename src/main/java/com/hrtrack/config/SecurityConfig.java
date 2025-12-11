@@ -1,7 +1,7 @@
 package com.hrtrack.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hrtrack.domain.responses.AuthenticationResponse;
+import com.hrtrack.domain.responses.auth.AuthenticationResponse;
 import com.hrtrack.filter.JwtAuthenticationFilter;
 import com.hrtrack.service.implementation.LogoutService;
 import jakarta.servlet.http.HttpServletResponse;

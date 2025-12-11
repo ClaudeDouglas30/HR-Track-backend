@@ -22,7 +22,9 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 @Entity
-@Table(name="users")
+@Table(name="users", indexes = {
+        @Index(name = "idx_user_email", columnList = "email", unique = true)
+})
 public class User implements UserDetails {
 
     @Id
@@ -41,6 +43,7 @@ public class User implements UserDetails {
 
     @Column(nullable = false)
     private String password;
+
     private String photoProfil;
     private String telephone;
 

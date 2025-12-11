@@ -1,6 +1,6 @@
 package com.hrtrack.domain.entities;
 
-import com.hrtrack.domain.PointageStatut;
+import com.hrtrack.domain.PointageStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -31,7 +31,7 @@ public class Pointage {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 10)
-    private PointageStatut statut;
+    private PointageStatus statut;
 
     @ManyToOne
     @JoinColumn(name = "horaire_travail_id")

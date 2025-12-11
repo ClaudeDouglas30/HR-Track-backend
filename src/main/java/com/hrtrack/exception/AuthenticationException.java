@@ -1,7 +1,7 @@
 package com.hrtrack.exception;
 
-import com.hrtrack.domain.responses.AuthenticationResponse;
-import com.hrtrack.domain.responses.ForgotPasswordResponse;
+import com.hrtrack.domain.responses.auth.AuthenticationResponse;
+import com.hrtrack.domain.responses.auth.ForgotPasswordResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;

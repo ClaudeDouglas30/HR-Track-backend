@@ -1,4 +1,4 @@
-package com.hrtrack.domain.responses;
+package com.hrtrack.domain.responses.auth;
 
 import com.hrtrack.domain.dtos.UserDto;
 import lombok.Builder;
