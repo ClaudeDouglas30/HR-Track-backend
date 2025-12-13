@@ -8,5 +8,5 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface JustificatifMapper {
     JustificatifDto toDto(Justificatif justificatif);
-    Justificatif toEntity(JustificatifMapper justificatifMapper);
+    Justificatif toEntity(JustificatifDto justificatifDto);
 }
