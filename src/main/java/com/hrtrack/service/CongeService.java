@@ -61,4 +61,12 @@ public interface CongeService {
      */
     boolean deleteConge(UUID uuid);
 
+    /**
+     * Permet d'ajouter ou modifier une annotation RH sur un congé
+     * @param uuid uuid du congé
+     * @param annotationRH l'annotation à ajouter
+     * @return le congé mis à jour
+     */
+    CongeDto addAnnotationRH(UUID uuid, String annotationRH);
+
 }

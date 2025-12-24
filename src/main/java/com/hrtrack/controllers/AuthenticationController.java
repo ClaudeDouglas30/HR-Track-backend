@@ -63,7 +63,31 @@ public class AuthenticationController {
     public ResponseEntity<ForgotPasswordResponse> forgotPassword(@RequestBody ForgotPasswordRequest request) throws MessagingException, EmailingException {
 
         String email = request.email();
-        authenticationService.createPasswordResetTokenForUser(email);
+        String platform = request.platform() != null ? request.platform() : "WEB";
+        authenticationService.createPasswordResetTokenForUser(email, platform);
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                new ForgotPasswordResponse(
+                        true,
+                        "Un email vous a été envoyé"
+                )
+        );
+    }
+
+    /**
+     * Endpoint dédié pour la réinitialisation de mot de passe depuis l'application mobile.
+     * Force la plateforme à "MOBILE" pour garantir le bon lien de réinitialisation.
+     * 
+     * @param request La requête contenant l'email de l'utilisateur
+     * @return La réponse confirmant l'envoi de l'email
+     * @throws MessagingException
+     * @throws EmailingException
+     */
+    @PostMapping("/forgot-password/mobile")
+    public ResponseEntity<ForgotPasswordResponse> forgotPasswordMobile(@RequestBody ForgotPasswordRequest request) throws MessagingException, EmailingException {
+
+        String email = request.email();
+        // Forcer la plateforme à MOBILE pour cet endpoint
+        authenticationService.createPasswordResetTokenForUser(email, "MOBILE");
         return ResponseEntity.status(HttpStatus.CREATED).body(
                 new ForgotPasswordResponse(
                         true,

@@ -1,6 +1,7 @@
 package com.hrtrack.service.implementation;
 
 import com.hrtrack.domain.CongeStatus;
+import com.hrtrack.domain.Role;
 import com.hrtrack.domain.dtos.CongeDto;
 import com.hrtrack.domain.dtos.JustificatifDto;
 import com.hrtrack.domain.entities.Conge;
@@ -60,13 +61,31 @@ public class CongeServiceImpl implements CongeService {
     /**
      * Récupère les détails d'un congé par son UUID.
      * 
+     * Règles de permissions :
+     * - EMPLOYEE : peut accéder uniquement à ses propres congés
+     * - RH/ADMIN : peut accéder à tous les congés
+     * 
      * @param uuid L'UUID du congé à récupérer
-     * @return Le DTO du congé trouvé, null si non trouvé
+     * @return Le DTO du congé trouvé, null si non trouvé ou si l'utilisateur n'a pas les permissions
      */
     @Override
     @Transactional(readOnly = true)
     public CongeDto getCongeById(UUID uuid) {
         Conge conge = congeRepository.findByCongeUuid(uuid);
+        if (conge == null) {
+            return null;
+        }
+
+        // Vérification des permissions pour les EMPLOYEE
+        User currentUser = getCurrentUser();
+        if (currentUser != null && currentUser.getRole() == Role.EMPLOYEE) {
+            // Vérifier que le congé appartient à l'utilisateur
+            if (!conge.getUser().getId().equals(currentUser.getId())) {
+                log.warn("Tentative d'accès non autorisée au congé {} par l'utilisateur {}", uuid, currentUser.getEmail());
+                return null;
+            }
+        }
+
         return mapCongeWithFiles(conge);
     }
 
@@ -95,6 +114,10 @@ public class CongeServiceImpl implements CongeService {
      * Seules les dates, le type de congé et le commentaire peuvent être modifiés.
      * Le statut ne peut être modifié que via changeCongeStatus.
      * 
+     * Règles de permissions :
+     * - EMPLOYEE : peut modifier uniquement ses propres congés et seulement s'ils sont ENATTENTE
+     * - RH/ADMIN : peut modifier tous les congés
+     * 
      * @param uuid L'UUID du congé à modifier
      * @param congeDto Les nouvelles informations du congé
      * @param files Liste des fichiers justificatifs à ajouter (optionnel)
@@ -113,6 +136,21 @@ public class CongeServiceImpl implements CongeService {
             User currentUser = getCurrentUser();
             if (currentUser == null) {
                 return null;
+            }
+
+            // Vérification des permissions pour les EMPLOYEE
+            if (currentUser.getRole() == Role.EMPLOYEE) {
+                // Vérifier que le congé appartient à l'utilisateur
+                if (!conge.getUser().getId().equals(currentUser.getId())) {
+                    log.warn("Tentative de modification non autorisée du congé {} par l'utilisateur {}", uuid, currentUser.getEmail());
+                    return null;
+                }
+                // Vérifier que le congé est en statut ENATTENTE (une fois soumis, plus de modification)
+                if (conge.getCongeStatus() != CongeStatus.ENATTENTE) {
+                    log.warn("Tentative de modification d'un congé {} déjà traité (statut: {}) par l'utilisateur {}", 
+                            uuid, conge.getCongeStatus(), currentUser.getEmail());
+                    return null;
+                }
             }
 
             // Validation des données
@@ -305,6 +343,26 @@ public class CongeServiceImpl implements CongeService {
         }
 
         return dto;
+    }
+
+    /**
+     * Ajoute ou modifie une annotation RH sur un congé.
+     * 
+     * @param uuid L'UUID du congé
+     * @param annotationRH L'annotation à ajouter
+     * @return Le DTO du congé mis à jour, null si le congé n'existe pas
+     */
+    @Override
+    @Transactional
+    public CongeDto addAnnotationRH(UUID uuid, String annotationRH) {
+        Conge conge = congeRepository.findByCongeUuid(uuid);
+        if (conge == null) {
+            return null;
+        }
+
+        conge.setAnnotationRH(annotationRH);
+        Conge savedConge = congeRepository.save(conge);
+        return mapCongeWithFiles(savedConge);
     }
 
     /**

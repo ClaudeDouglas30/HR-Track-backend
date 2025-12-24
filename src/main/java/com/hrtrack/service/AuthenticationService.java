@@ -31,7 +31,7 @@ public interface AuthenticationService {
      * Permet de gérer la logique de génération d'un token
      * @param email
      */
-    void createPasswordResetTokenForUser(String email) throws MessagingException, EmailingException;
+    void createPasswordResetTokenForUser(String email, String platform) throws MessagingException, EmailingException;
 
     /**
      * Permet de reinitialiser un mot de passe

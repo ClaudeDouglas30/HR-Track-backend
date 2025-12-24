@@ -4,12 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hrtrack.domain.responses.auth.AuthenticationResponse;
 import com.hrtrack.filter.JwtAuthenticationFilter;
 import com.hrtrack.service.implementation.LogoutService;
+import com.hrtrack.utils.CustomOAuth2SuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -18,7 +20,11 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.List;
 
 
 @Configuration
@@ -29,6 +35,7 @@ public class SecurityConfig {
 
     private final LogoutService logoutService;
 
+
     @Bean
     public SecurityFilterChain filterChain(
             HttpSecurity httpSecurity,
@@ -37,39 +44,43 @@ public class SecurityConfig {
     ) throws Exception {
 
         httpSecurity
+                .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(request ->
-                        request.requestMatchers("/api/v1/auth/**").permitAll()
+                        request
+                                .requestMatchers("/api/v1/auth/**").permitAll()
+                                .requestMatchers("/api/v1/oauth2/**").permitAll()
                                 .anyRequest().authenticated()
                 )
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .logout(logout -> logout
                         .logoutUrl("/api/v1/auth/logout")
                         .addLogoutHandler(logoutService)
-                        .logoutSuccessHandler((request, response, authentication) -> SecurityContextHolder.clearContext())
-                )
-                .exceptionHandling(exception ->
-                        exception
-                                .authenticationEntryPoint((request, response, authException) -> {
-
-                                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
-                                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                                    response.setCharacterEncoding("UTF-8");
-
-                                    AuthenticationResponse errorResponse = AuthenticationResponse.builder()
-                                            .success(false)
-                                            .message("Accès refusé. Jetons d'authentification requis.")
-                                            .token(null) // Pas de token en cas d'échec
-                                            .build();
-
-                                    final ObjectMapper mapper = new ObjectMapper();
-                                    mapper.writeValue(response.getWriter(), errorResponse);
-                                })
+                        .logoutSuccessHandler((request, response, authentication) -> {
+                            SecurityContextHolder.clearContext();
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.setStatus(HttpServletResponse.SC_OK);
+                            response.getWriter().write("{\"success\": true, \"message\": \"Déconnexion réussie.\"}");
+                        })
                 );
 
         return httpSecurity.build();
+    }
+
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("*"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(false);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }

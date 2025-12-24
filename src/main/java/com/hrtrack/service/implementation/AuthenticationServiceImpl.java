@@ -16,8 +16,10 @@ import com.hrtrack.service.AuthenticationService;
 import com.hrtrack.service.EmailService;
 import com.hrtrack.service.JwtService;
 import com.hrtrack.service.JwtTokenService;
+import com.hrtrack.utils.TokenGenerator;
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -29,6 +31,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthenticationServiceImpl implements AuthenticationService {
@@ -42,8 +45,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final UserMapper userMapper;
     private final JwtTokenRepository jwtTokenRepository;
 
-    @Value("${application.frontend.url}")
-    private String frontendUrl;
+    @Value("${application.frontend.web.url}")
+    private String frontendWebUrl;
+
+    @Value("${application.frontend.mobile.url}")
+    private String frontendMobileUrl;
 
 
     @Override
@@ -106,9 +112,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     @Override
-    public void createPasswordResetTokenForUser(String email) throws MessagingException, EmailingException {
+    public void createPasswordResetTokenForUser(String email, String platform) throws MessagingException, EmailingException {
 
-        String token = UUID.randomUUID().toString();
+        // Générer un token sécurisé de 32 caractères
+        String token = TokenGenerator.generateSecureToken();
 
         Calendar cal = Calendar.getInstance();
         cal.setTime(new Date());
@@ -120,10 +127,18 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         user.setResetPasswordExpiration(expiryDate);
         userRepository.save(user);
 
+        // Normaliser la plateforme pour éviter les problèmes (trim, uppercase, null-safe)
+        String normalizedPlatform = platform != null ? platform.trim().toUpperCase() : "WEB";
+        log.info("Demande de réinitialisation de mot de passe pour l'email : {}, plateforme reçue : '{}' (normalisée : '{}')", 
+                email, platform != null ? platform : "null", normalizedPlatform);
+
+        // Déterminer l'URL complète de réinitialisation selon la plateforme
+        String resetUrl = determineResetUrl(normalizedPlatform, token);
+
         Context context = new Context();
         context.setVariable("token", token);
         context.setVariable("subject", "Vous avez demandé à réinitialiser votre mot de passe - HR Track");
-        context.setVariable("resetUrl", STR."\{frontendUrl}/resetpassword?token=");
+        context.setVariable("resetUrl", resetUrl);
 
         emailService.sendMail(
                 user.getEmail(),
@@ -131,6 +146,36 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 "forgot-password",
                 context
         );
+    }
+
+    /**
+     * Détermine l'URL complète de réinitialisation selon la plateforme.
+     * 
+     * @param platform La plateforme (WEB ou MOBILE)
+     * @param token Le token de réinitialisation
+     * @return L'URL complète de réinitialisation avec le token
+     */
+    private String determineResetUrl(String platform, String token) {
+        String baseUrl;
+        String resetPath;
+        
+        // Normaliser la plateforme (trim et uppercase pour éviter les problèmes de casse)
+        String normalizedPlatform = platform != null ? platform.trim().toUpperCase() : "WEB";
+        
+        if ("MOBILE".equals(normalizedPlatform)) {
+            baseUrl = frontendMobileUrl;
+            resetPath = "/reset-password";
+            log.info("Génération du lien de réinitialisation pour MOBILE : {}{}?token={}", baseUrl, resetPath, token);
+        } else {
+            baseUrl = frontendWebUrl;
+            resetPath = "/administration/auth/reset-password";
+            log.info("Génération du lien de réinitialisation pour WEB : {}{}?token={}", baseUrl, resetPath, token);
+        }
+        
+        String finalUrl = baseUrl + resetPath + "?token=" + token;
+        log.debug("URL de réinitialisation générée : {}", finalUrl);
+        
+        return finalUrl;
     }
 
     @Override
