@@ -77,9 +77,6 @@ public class User implements UserDetails {
     private List<Conge> conges = new ArrayList<>();
 
 
-    @ManyToMany(mappedBy = "users")
-    private List<Departement> departements = new ArrayList<>();
-
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<JwtToken>  jwtTokens = new ArrayList<>();
 

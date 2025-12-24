@@ -25,6 +25,8 @@ public class TypeConge {
 
     private int quotaAnnuel;
 
+    private String description;
+
     @OneToMany(mappedBy = "typeConge")
     private List<Conge> conges = new ArrayList<>();
 }
