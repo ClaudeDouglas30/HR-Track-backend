@@ -7,8 +7,6 @@ import com.hrtrack.domain.responses.conge.ListCongeResponse;
 import com.hrtrack.service.CongeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +19,6 @@ import java.util.UUID;
 
 /**
  * Contrôleur pour la gestion des demandes de congés.
- * 
  * Organisation :
  * - Section RH : Gestion complète des demandes (voir, accepter, refuser, modifier, supprimer, annoter)
  * - Section ADMIN : Consultation des demandes et statistiques
