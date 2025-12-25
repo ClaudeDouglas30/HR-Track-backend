@@ -10,5 +10,9 @@ import java.util.List;
 public interface PointageRepository extends JpaRepository<Pointage, Long> {
     List<Pointage> findByUser(User user);
     List<Pointage> findByUserAndDateBetween(User user, Date startDate, Date endDate);
+
+    // Pour un employé
+    List<Pointage> findByUserId(Long userId);
+
 }
 
