@@ -69,4 +69,23 @@ public interface CongeService {
      */
     CongeDto addAnnotationRH(UUID uuid, String annotationRH);
 
+    /**
+     * Récupère les demandes de congés avec pagination et filtrage (pour RH/ADMIN).
+     * @param status Filtre par statut (all, ENATTENTE, ACCEPTER, REFUSER)
+     * @param searchTerm Terme de recherche (nom, prénom)
+     * @param page Numéro de page (0-based)
+     * @param size Taille de la page
+     * @return Liste paginée des demandes de congés avec statistiques
+     */
+    com.hrtrack.domain.responses.conge.PaginatedLeaveRequestResponse getLeaveRequestsPaginated(
+            String status, String searchTerm, int page, int size);
+
+    /**
+     * Refuse un congé avec un motif de refus.
+     * @param uuid UUID du congé
+     * @param motifRefus Motif du refus
+     * @return Le congé mis à jour
+     */
+    CongeDto rejectCongeWithMotif(UUID uuid, String motifRefus);
+
 }

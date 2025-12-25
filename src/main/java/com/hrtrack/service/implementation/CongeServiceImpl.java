@@ -1,16 +1,20 @@
 package com.hrtrack.service.implementation;
 
 import com.hrtrack.domain.CongeStatus;
+import com.hrtrack.domain.PointageStatus;
 import com.hrtrack.domain.Role;
-import com.hrtrack.domain.dtos.CongeDto;
-import com.hrtrack.domain.dtos.JustificatifDto;
+import com.hrtrack.domain.dtos.*;
 import com.hrtrack.domain.entities.Conge;
+import com.hrtrack.domain.entities.Pointage;
 import com.hrtrack.domain.entities.TypeConge;
 import com.hrtrack.domain.entities.User;
+import com.hrtrack.domain.responses.conge.PaginatedLeaveRequestResponse;
 import com.hrtrack.domain.validation.CongeValidator;
 import com.hrtrack.exception.ValidationException;
 import com.hrtrack.mappers.CongeMapper;
+import com.hrtrack.mappers.TypeCongeMapper;
 import com.hrtrack.repository.CongeRepository;
+import com.hrtrack.repository.PointageRepository;
 import com.hrtrack.repository.TypeCongeRepository;
 import com.hrtrack.repository.UserRepository;
 import com.hrtrack.service.CongeService;
@@ -23,9 +27,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Service d'implémentation pour la gestion des congés.
@@ -42,6 +51,7 @@ public class CongeServiceImpl implements CongeService {
     private final TypeCongeRepository typeCongeRepository;
     private final CongeValidator congeValidator;
     private final JustificatifService justificatifService;
+    private final PointageRepository pointageRepository;
 
 
     /**
@@ -166,11 +176,7 @@ public class CongeServiceImpl implements CongeService {
 
             // Mise à jour du type de congé si fourni
             if (congeDto.getTypeConge() != null && congeDto.getTypeConge().getLibelle() != null) {
-                TypeConge typeConge = typeCongeRepository.findByLibelle(congeDto.getTypeConge().getLibelle())
-                        .orElse(null);
-                if (typeConge != null) {
-                    conge.setTypeConge(typeConge);
-                }
+                typeCongeRepository.findByLibelle(congeDto.getTypeConge().getLibelle()).ifPresent(conge::setTypeConge);
             }
 
             // Sauvegarde des modifications
@@ -330,19 +336,8 @@ public class CongeServiceImpl implements CongeService {
         if (conge == null) {
             return null;
         }
-        CongeDto dto = congeMapper.toDto(conge);
 
-        // Mise à jour des URLs des justificatifs
-        List<JustificatifDto> justificatifDtos = dto.getJustificatifs();
-        if (justificatifDtos != null) {
-            justificatifDtos.forEach(justificatif -> {
-                if (justificatif.getNomFichier() != null) {
-                    justificatif.setUrlFichier(justificatif.getNomFichier().toString());
-                }
-            });
-        }
-
-        return dto;
+        return congeMapper.toDto(conge);
     }
 
     /**
@@ -391,5 +386,217 @@ public class CongeServiceImpl implements CongeService {
         }
 
         return null;
+    }
+
+    /**
+     * Récupère les demandes de congés avec pagination et filtrage.
+     * 
+     * @param status Filtre par statut (all, ENATTENTE, ACCEPTER, REFUSER)
+     * @param searchTerm Terme de recherche (nom, prénom)
+     * @param page Numéro de page (0-based)
+     * @param size Taille de la page
+     * @return Liste paginée des demandes de congés avec statistiques
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedLeaveRequestResponse getLeaveRequestsPaginated(
+            String status, String searchTerm, int page, int size) {
+        
+        // Récupérer toutes les demandes
+        List<Conge> allConges = congeRepository.findAll();
+        
+        // Filtrer par statut (gérer les mappings PENDING/APPROVED/REJECTED du frontend)
+        List<Conge> filteredConges = allConges.stream()
+                .filter(conge -> {
+                    if (status == null || status.equals("all") || status.equalsIgnoreCase("all")) {
+                        return true;
+                    }
+                    try {
+                        // Mapper les statuts du frontend vers les statuts du backend
+                        CongeStatus filterStatus = mapStatusFromFrontend(status);
+                        return conge.getCongeStatus() == filterStatus;
+                    } catch (IllegalArgumentException e) {
+                        return true;
+                    }
+                })
+                .filter(conge -> {
+                    if (searchTerm == null || searchTerm.trim().isEmpty()) {
+                        return true;
+                    }
+                    String search = searchTerm.toLowerCase().trim();
+                    User user = conge.getUser();
+                    if (user == null) {
+                        return false;
+                    }
+                    return (user.getNom() != null && user.getNom().toLowerCase().contains(search)) ||
+                           (user.getPrenom() != null && user.getPrenom().toLowerCase().contains(search));
+                })
+                .collect(Collectors.toList());
+        
+        // Calculer les statistiques globales
+        long pendingCount = allConges.stream()
+                .filter(c -> c.getCongeStatus() == CongeStatus.ENATTENTE)
+                .count();
+        long approvedCount = allConges.stream()
+                .filter(c -> c.getCongeStatus() == CongeStatus.ACCEPTER)
+                .count();
+        long rejectedCount = allConges.stream()
+                .filter(c -> c.getCongeStatus() == CongeStatus.REFUSER)
+                .count();
+        
+        // Calculer la pagination
+        long totalElements = filteredConges.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        
+        // Extraire la page demandée
+        int start = page * size;
+        int end = Math.min(start + size, filteredConges.size());
+        List<Conge> pageConges = filteredConges.subList(start, end);
+        
+        // Convertir en LeaveRequestDto
+        List<LeaveRequestDto> leaveRequests = pageConges.stream()
+                .map(this::mapCongeToLeaveRequestDto)
+                .collect(Collectors.toList());
+        
+        return PaginatedLeaveRequestResponse.builder()
+                .success(true)
+                .message("Liste des demandes récupérée avec succès")
+                .leaveRequests(leaveRequests)
+                .totalElements(totalElements)
+                .totalPages(totalPages)
+                .currentPage(page)
+                .pageSize(size)
+                .pendingCount(pendingCount)
+                .approvedCount(approvedCount)
+                .rejectedCount(rejectedCount)
+                .build();
+    }
+
+    /**
+     * Refuse un congé avec un motif de refus.
+     * Le motif est stocké dans annotationRH.
+     * 
+     * @param uuid UUID du congé
+     * @param motifRefus Motif du refus
+     * @return Le congé mis à jour
+     */
+    @Override
+    @Transactional
+    public CongeDto rejectCongeWithMotif(UUID uuid, String motifRefus) {
+        Conge conge = congeRepository.findByCongeUuid(uuid);
+        if (conge == null) {
+            return null;
+        }
+        
+        conge.setCongeStatus(CongeStatus.REFUSER);
+        conge.setAnnotationRH(motifRefus);
+        
+        Conge savedConge = congeRepository.save(conge);
+        return mapCongeWithFiles(savedConge);
+    }
+
+    /**
+     * Convertit une entité Conge en LeaveRequestDto avec calcul des absences et retards.
+     * 
+     * @param conge L'entité Conge à convertir
+     * @return Le DTO LeaveRequestDto
+     */
+    private LeaveRequestDto mapCongeToLeaveRequestDto(Conge conge) {
+        User user = conge.getUser();
+        
+        // Calculer les absences et retards de l'employé
+        int nombreAbsences = 0;
+        int nombreRetards = 0;
+        
+        if (user != null) {
+            LocalDate now = LocalDate.now();
+            LocalDate sixMonthsAgo = now.minusMonths(6);
+            Date startDate = Date.from(sixMonthsAgo.atStartOfDay(ZoneId.systemDefault()).toInstant());
+            Date endDate = Date.from(now.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant());
+            
+            List<Pointage> pointages = pointageRepository.findByUserAndDateBetween(user, startDate, endDate);
+            
+            nombreAbsences = (int) pointages.stream()
+                    .filter(p -> p.getHeureArrivee() == null && p.getHeureDepart() == null)
+                    .count();
+            
+            nombreRetards = (int) pointages.stream()
+                    .filter(p -> p.getStatut() == PointageStatus.RETARD)
+                    .count();
+        }
+        
+        // Créer EmployeeInfoDto
+        EmployeeInfoDto employeeInfo = EmployeeInfoDto.builder()
+                .id(user != null ? user.getId() : null)
+                .nom(user != null ? user.getNom() : null)
+                .prenom(user != null ? user.getPrenom() : null)
+                .email(user != null ? user.getEmail() : null)
+                .telephone(user != null ? user.getTelephone() : null)
+                .nombreAbsences(nombreAbsences)
+                .nombreRetards(nombreRetards)
+                .build();
+        
+        // Créer TypeCongeDto
+        TypeCongeDto typeCongeDto = null;
+        if (conge.getTypeConge() != null) {
+            TypeConge typeConge = conge.getTypeConge();
+            typeCongeDto = TypeCongeDto.builder()
+                    .id(typeConge.getId())
+                    .libelle(typeConge.getLibelle())
+                    .quotaAnnuel(typeConge.getQuotaAnnuel())
+                    .description(typeConge.getDescription())
+                    .build();
+        }
+        
+        // Calculer la durée en jours
+        int duree = 0;
+        if (conge.getDateDebut() != null && conge.getDateFin() != null) {
+            duree = (int) ChronoUnit.DAYS.between(conge.getDateDebut(), conge.getDateFin()) + 1;
+        }
+        
+        // Déterminer le motif de refus (stocké dans annotationRH si le statut est REFUSER)
+        String motifRefus = null;
+        if (conge.getCongeStatus() == CongeStatus.REFUSER && conge.getAnnotationRH() != null) {
+            motifRefus = conge.getAnnotationRH();
+        }
+        
+        return LeaveRequestDto.builder()
+                .id(conge.getId())
+                .employe(employeeInfo)
+                .typeConge(typeCongeDto)
+                .dateDebut(conge.getDateDebut())
+                .dateFin(conge.getDateFin())
+                .duree(duree)
+                .statut(conge.getCongeStatus())
+                .dateDemande(conge.getDateSoumission())
+                .commentaire(conge.getCommentaireEmployee())
+                .motifRefus(motifRefus)
+                .build();
+    }
+
+    /**
+     * Mappe les statuts du frontend (PENDING, APPROVED, REJECTED) vers les statuts du backend.
+     * 
+     * @param frontendStatus Statut du frontend (PENDING, APPROVED, REJECTED, pending, approved, rejected, ENATTENTE, ACCEPTER, REFUSER)
+     * @return Le statut CongeStatus correspondant
+     */
+    private CongeStatus mapStatusFromFrontend(String frontendStatus) {
+        if (frontendStatus == null) {
+            throw new IllegalArgumentException("Status cannot be null");
+        }
+        String upperStatus = frontendStatus.toUpperCase();
+        switch (upperStatus) {
+            case "PENDING":
+            case "ENATTENTE":
+                return CongeStatus.ENATTENTE;
+            case "APPROVED":
+            case "ACCEPTER":
+                return CongeStatus.ACCEPTER;
+            case "REJECTED":
+            case "REFUSER":
+                return CongeStatus.REFUSER;
+            default:
+                throw new IllegalArgumentException("Unknown status: " + frontendStatus);
+        }
     }
 }

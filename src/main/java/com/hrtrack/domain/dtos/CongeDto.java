@@ -20,5 +20,4 @@ public class CongeDto {
     private CongeStatus congeStatus;
     private TypeCongeDto typeConge;
     private UserDto user;
-    private List<JustificatifDto> justificatifs;
 }
