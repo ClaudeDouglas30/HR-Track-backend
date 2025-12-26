@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -68,8 +69,11 @@ public class JustificatifServiceImpl implements JustificatifService {
             // Générer un UUID pour le fichier
             UUID fileUuid = UUID.randomUUID();
 
-            // Stocker le fichier
-            fileStorageService.storeFile(file, fileUuid);
+            // Récupérer l'email de l'utilisateur du congé
+            String userEmail = conge.getUser().getEmail();
+
+            // Stocker le fichier avec l'email de l'utilisateur
+            fileStorageService.storeFile(file, fileUuid, userEmail);
 
             // Créer l'entité Justificatif
             Justificatif justificatif = Justificatif.builder()
@@ -80,7 +84,7 @@ public class JustificatifServiceImpl implements JustificatifService {
             // Sauvegarder en base
             Justificatif savedJustificatif = justificatifRepository.save(justificatif);
 
-            log.info("Justificatif uploadé avec succès pour le congé : {}", congeUuid);
+            log.info("Justificatif uploadé avec succès pour le congé : {} de l'utilisateur {}", congeUuid, userEmail);
 
             // Mapper vers DTO
             JustificatifDto dto = justificatifMapper.toDto(savedJustificatif);
@@ -91,6 +95,38 @@ public class JustificatifServiceImpl implements JustificatifService {
             log.error("Erreur lors du stockage du fichier", e);
             throw new ValidationException("Erreur lors du stockage du fichier : " + e.getMessage());
         }
+    }
+
+    /**
+     * Upload plusieurs justificatifs pour un congé.
+     *
+     * @param congeUuid L'UUID du congé
+     * @param files Liste des fichiers à uploader
+     * @return Liste des DTO des justificatifs créés
+     */
+    @Override
+    @Transactional
+    public List<JustificatifDto> uploadJustificatifs(UUID congeUuid, List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<JustificatifDto> uploadedFiles = new ArrayList<>();
+
+        for (MultipartFile file : files) {
+            if (file != null && !file.isEmpty()) {
+                try {
+                    JustificatifDto dto = uploadJustificatif(congeUuid, file);
+                    uploadedFiles.add(dto);
+                } catch (Exception e) {
+                    log.error("Erreur lors de l'upload du fichier {} : {}", file.getOriginalFilename(), e.getMessage());
+                    // Continue avec les autres fichiers même si un échoue
+                }
+            }
+        }
+
+        log.info("{} justificatif(s) uploadé(s) sur {} pour le congé {}", uploadedFiles.size(), files.size(), congeUuid);
+        return uploadedFiles;
     }
 
     /**
@@ -140,18 +176,38 @@ public class JustificatifServiceImpl implements JustificatifService {
         }
 
         try {
-            // Supprimer le fichier du système de fichiers
-            fileStorageService.deleteFile(justificatifUuid);
+            // Récupérer l'email de l'utilisateur
+            String userEmail = justificatif.getConge().getUser().getEmail();
+
+            // Supprimer le fichier du système de fichiers avec l'email de l'utilisateur
+            fileStorageService.deleteFile(justificatifUuid, userEmail);
 
             // Supprimer l'entité de la base de données
             justificatifRepository.delete(justificatif);
 
-            log.info("Justificatif supprimé avec succès : {}", justificatifUuid);
+            log.info("Justificatif supprimé avec succès : {} de l'utilisateur {}", justificatifUuid, userEmail);
             return true;
         } catch (Exception e) {
             log.error("Erreur lors de la suppression du justificatif : {}", justificatifUuid, e);
             return false;
         }
     }
-}
 
+    /**
+     * Récupère un justificatif par son UUID (nom de fichier).
+     *
+     * @param uuid L'UUID du justificatif
+     * @return Le DTO du justificatif, ou null si non trouvé
+     */
+    @Override
+    public JustificatifDto getJustificatifByUuid(UUID uuid) {
+        if (uuid == null) return null;
+        var j = justificatifRepository.findByNomFichier(uuid);
+        Justificatif justificatif = null;
+        if (j == null) return null;
+                else{
+            justificatif = j.get();
+        };
+        return justificatifMapper.toDto(justificatif);
+    }
+}

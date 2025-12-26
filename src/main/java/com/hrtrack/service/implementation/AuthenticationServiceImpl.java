@@ -102,13 +102,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         jwtTokenService.revokeAllUserTokens(user);
         jwtTokenService.saveUserToken(user, jwt, refreshToken);
 
-        return AuthenticationResponse.builder()
-                .success(true)
-                .message("Connexion réussie.")
-                .token(jwt)
-                .refreshToken(refreshToken)
-                .user(userDto)
-                .build();
+        return new AuthenticationResponse(
+                true,
+                "Connexion réussie.",
+                jwt,
+                refreshToken,
+                userDto
+        );
     }
 
     @Override
@@ -229,20 +229,20 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 var newRefreshToken = jwtService.generateRefreshToken(user);
                 jwtTokenService.rotateUserTokens(user, newToken, newRefreshToken, token);
 
-                return RefreshTokenResponse.builder()
-                        .success(true)
-                        .message("Token renouvelé avec succès")
-                        .token(newToken)
-                        .refreshToken(newRefreshToken)
-                        .build();
+                return new RefreshTokenResponse(
+                        true,
+                        "Token renouvelé avec succès",
+                        newToken,
+                        newRefreshToken
+                );
             }
         }
-        return RefreshTokenResponse.builder()
-                .success(false)
-                .message("Token invalide.")
-                .token(null)
-                .refreshToken(null)
-                .build();
+        return new RefreshTokenResponse(
+                false,
+                "Token invalide.",
+                null,
+                null
+        );
     }
 
 

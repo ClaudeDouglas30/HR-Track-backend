@@ -10,5 +10,5 @@ import java.util.UUID;
 public interface JustificatifRepository extends JpaRepository<Justificatif, Long> {
     Optional<Justificatif> findByNomFichier(UUID nomFichier);
     List<Justificatif> findByCongeId(Long congeId);
-}
 
+}

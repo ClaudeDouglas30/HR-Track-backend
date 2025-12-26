@@ -10,6 +10,7 @@ import java.util.UUID;
 
 public interface CongeService {
 
+
     /***
      * Liste de toutes les demandes de congés
      * @return
@@ -68,5 +69,21 @@ public interface CongeService {
      * @return le congé mis à jour
      */
     CongeDto addAnnotationRH(UUID uuid, String annotationRH);
+
+    /**
+     * Permet d'ajouter des justificatifs à un congé existant
+     * @param uuid uuid du congé
+     * @param files fichiers justificatifs à ajouter
+     * @return le congé mis à jour avec les nouveaux justificatifs
+     */
+    CongeDto addJustificatifsToConge(UUID uuid, List<MultipartFile> files);
+
+    /**
+     * Permet d'ajouter ou modifier un commentaire RH sur un congé
+     * @param uuid uuid du congé
+     * @param commentaireRH le commentaire à ajouter
+     * @return le congé mis à jour
+     */
+    CongeDto addCommentaireRH(UUID uuid, String commentaireRH);
 
 }

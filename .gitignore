@@ -38,3 +38,5 @@ build/
 
 ### Storage Directory ###
 storage/
+### Uploaded files ###
+uploads/
