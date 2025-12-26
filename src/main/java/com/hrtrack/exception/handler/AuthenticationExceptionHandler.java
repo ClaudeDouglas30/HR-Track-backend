@@ -74,7 +74,7 @@ public class AuthenticationExceptionHandler {
     @ExceptionHandler({UsernameNotFoundException.class})
     public ResponseEntity<AuthenticationResponse> handleUsernameNotFoundException(UsernameNotFoundException ex) {
         log.warn("Utilisateur non trouvé : {}", ex.getMessage());
-        
+
         AuthenticationResponse response = AuthenticationResponse.builder()
                 .success(false)
                 .message("Utilisateur non trouvé. Veuillez vérifier vos identifiants.")
@@ -84,4 +84,3 @@ public class AuthenticationExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 }
-

@@ -33,19 +33,32 @@ public class PointageServiceImpl implements IPointageService {
     }
 
     @Override
-    public PointageResponse pointer(PointageRequest request, Long userId) {
+    public PointageResponse pointer(PointageRequest request, Long userId) throws Exception {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Pointage pointage = new Pointage();
-        pointage.setDate(java.sql.Date.valueOf(LocalDate.now()));
-        pointage.setHeureArrivee(request.heureEntree());
-        pointage.setHeureDepart(request.heureSortie());
-        pointage.setStatut(calculerStatus(request.heureEntree()));
-        pointage.setUser(user);
+        List<Pointage> pointageList = pointageRepository.findByUserId(userId);
+        try {
+            if (pointageList.size() <2) {
+                Pointage pointage = new Pointage();
+                pointage.setDate(java.sql.Date.valueOf(LocalDate.now()));
+                pointage.setHeureArrivee(request.heureEntree());
+                pointage.setHeureDepart(request.heureSortie());
+                pointage.setStatut(calculerStatus(request.heureEntree()));
+                pointage.setUser(user);
 
-        return pointageMapper.toResponse(pointageRepository.save(pointage));
+                return pointageMapper.toResponse(pointageRepository.save(pointage));
+            }
+            else{
+                throw new Exception("on ne peut faire que deux pointage par jour ");
+            }
+        }
+        catch (Exception e) {
+
+            throw new Exception("une erreur est survenue lors du pointage");
+        }
+
     }
 
     @Override

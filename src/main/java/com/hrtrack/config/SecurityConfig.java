@@ -1,7 +1,7 @@
 package com.hrtrack.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hrtrack.domain.responses.auth.AuthenticationResponse;
+
 import com.hrtrack.filter.JwtAuthenticationFilter;
 import com.hrtrack.service.implementation.LogoutService;
 import com.hrtrack.utils.CustomOAuth2SuccessHandler;

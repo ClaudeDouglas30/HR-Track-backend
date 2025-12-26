@@ -8,4 +8,5 @@ import java.util.Optional;
 
 public interface TypeCongeRepository extends JpaRepository<TypeConge, Integer> {
     Optional<TypeConge> findByLibelle(Libelle libelle);
+
 }

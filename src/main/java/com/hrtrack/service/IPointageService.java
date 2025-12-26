@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface IPointageService {
 
-    PointageResponse pointer(PointageRequest request, Long userId);
+    PointageResponse pointer(PointageRequest request, Long userId) throws Exception;
 
     List<PointageResponse> getPointages(User user);
 }

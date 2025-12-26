@@ -3,8 +3,12 @@ package com.hrtrack.service.implementation;
 import com.hrtrack.domain.CongeStatus;
 import com.hrtrack.domain.PointageStatus;
 import com.hrtrack.domain.Role;
+import com.hrtrack.domain.Libelle;
+import com.hrtrack.domain.dtos.CongeDto;
+import com.hrtrack.domain.dtos.JustificatifDto;
 import com.hrtrack.domain.dtos.*;
 import com.hrtrack.domain.entities.Conge;
+import com.hrtrack.domain.entities.Justificatif;
 import com.hrtrack.domain.entities.Pointage;
 import com.hrtrack.domain.entities.TypeConge;
 import com.hrtrack.domain.entities.User;
@@ -14,6 +18,7 @@ import com.hrtrack.exception.ValidationException;
 import com.hrtrack.mappers.CongeMapper;
 import com.hrtrack.mappers.TypeCongeMapper;
 import com.hrtrack.repository.CongeRepository;
+import com.hrtrack.repository.JustificatifRepository;
 import com.hrtrack.repository.PointageRepository;
 import com.hrtrack.repository.TypeCongeRepository;
 import com.hrtrack.repository.UserRepository;
@@ -21,6 +26,7 @@ import com.hrtrack.service.CongeService;
 import com.hrtrack.service.JustificatifService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -29,6 +35,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -52,11 +59,14 @@ public class CongeServiceImpl implements CongeService {
     private final CongeValidator congeValidator;
     private final JustificatifService justificatifService;
     private final PointageRepository pointageRepository;
+    private final JustificatifRepository justificatifRepository;
 
+    @Value("${application.upload.path:uploads/justificatifs}")
+    private String uploadPath;
 
     /**
      * Récupère la liste de toutes les demandes de congés.
-     * 
+     *
      * @return Liste de tous les congés avec leurs justificatifs mappés
      */
     @Override
@@ -249,7 +259,7 @@ public class CongeServiceImpl implements CongeService {
 
             // Récupération du type de congé validé
             TypeConge typeConge = typeCongeRepository.findByLibelle(congeDto.getTypeConge().getLibelle())
-                    .orElse(null);
+                    .orElseThrow(() -> new ValidationException("Type de congé invalide: " + congeDto.getTypeConge().getLibelle()));
 
             // Création de l'entité Conge à partir du DTO
             Conge conge = congeMapper.toEntity(congeDto);
@@ -258,13 +268,16 @@ public class CongeServiceImpl implements CongeService {
             }
             
             // Configuration des champs obligatoires et spécifiques
+            conge.setCongeUuid(UUID.randomUUID());
             conge.setDateDebut(congeDto.getDateDebut());
             conge.setDateFin(congeDto.getDateFin());
             conge.setCongeStatus(CongeStatus.ENATTENTE);
             conge.setDateSoumission(LocalDateTime.now());
             conge.setUser(currentUser);
             conge.setTypeConge(typeConge);
-            conge.setJustificatif("");
+            conge.setCommentaireEmployee(congeDto.getCommentaireEmployee());
+            conge.setJustificatif(""); // Sera mis à jour si des fichiers sont uploadés
+            conge.setJustificatifs(new ArrayList<>());
 
             // Sauvegarde du congé
             Conge savedConge = congeRepository.save(conge);
@@ -286,8 +299,12 @@ public class CongeServiceImpl implements CongeService {
             }
 
             return mapCongeWithFiles(savedConge);
+
         } catch (ValidationException e) {
             log.error("Erreur de validation lors de la création du congé : {}", e.getMessage());
+            return null;
+        } catch (Exception e) {
+            log.error("Erreur inattendue lors de la création du congé : {}", e.getMessage(), e);
             return null;
         }
     }
@@ -317,18 +334,35 @@ public class CongeServiceImpl implements CongeService {
             // Validation de la suppression via le validator
             congeValidator.validateForDeletion(conge, currentUser);
 
-            // Suppression du congé
+            // Suppression du congé (les justificatifs seront supprimés en cascade)
             congeRepository.delete(conge);
             return true;
         } catch (ValidationException e) {
-            // Log l'erreur de validation si nécessaire
+            log.error("Erreur de validation lors de la suppression du congé {} : {}", uuid, e.getMessage());
+            return false;
+        } catch (Exception e) {
+            log.error("Erreur inattendue lors de la suppression du congé {} : {}", uuid, e.getMessage());
             return false;
         }
     }
 
     /**
      * Méthode utilitaire pour mapper un Conge en CongeDto avec les URLs des justificatifs.
-     * 
+     *
+     * @param conge L'entité Conge à mapper
+     * @return Le DTO mappé avec les URLs des justificatifs, null si conge est null
+     */
+//    private CongeDto mapCongeWithFiles(Conge conge) {
+//        if (conge == null) {
+//            return null;
+//        }
+//
+//        return congeMapper.toDto(conge);
+//    }
+
+    /**
+     * Méthode utilitaire pour mapper un Conge en CongeDto avec les URLs des justificatifs.
+     *
      * @param conge L'entité Conge à mapper
      * @return Le DTO mappé avec les URLs des justificatifs, null si conge est null
      */
@@ -336,13 +370,24 @@ public class CongeServiceImpl implements CongeService {
         if (conge == null) {
             return null;
         }
+        CongeDto dto = congeMapper.toDto(conge);
 
-        return congeMapper.toDto(conge);
+        // Mise à jour des URLs des justificatifs
+        List<JustificatifDto> justificatifDtos = dto.getJustificatifs();
+        if (justificatifDtos != null) {
+            justificatifDtos.forEach(justificatif -> {
+                if (justificatif.getNomFichier() != null) {
+                    justificatif.setUrlFichier(justificatif.getNomFichier().toString());
+                }
+            });
+        }
+
+        return dto;
     }
 
     /**
      * Ajoute ou modifie une annotation RH sur un congé.
-     * 
+     *
      * @param uuid L'UUID du congé
      * @param annotationRH L'annotation à ajouter
      * @return Le DTO du congé mis à jour, null si le congé n'existe pas
@@ -358,6 +403,67 @@ public class CongeServiceImpl implements CongeService {
         conge.setAnnotationRH(annotationRH);
         Conge savedConge = congeRepository.save(conge);
         return mapCongeWithFiles(savedConge);
+    }
+
+    /**
+     * Ajoute des justificatifs à un congé existant.
+     * Seul l'employé propriétaire du congé peut ajouter des justificatifs.
+     * Les justificatifs ne peuvent être ajoutés que si le congé est en attente.
+     *
+     * @param uuid UUID du congé
+     * @param files Liste des fichiers justificatifs à ajouter
+     * @return Le congé mis à jour avec les nouveaux justificatifs
+     */
+    @Override
+    @Transactional
+    public CongeDto addJustificatifsToConge(UUID uuid, List<MultipartFile> files) {
+        // Vérifier que des fichiers sont fournis
+        if (files == null || files.isEmpty()) {
+            log.warn("Aucun fichier fourni pour l'ajout de justificatifs au congé {}", uuid);
+            throw new ValidationException("Aucun fichier fourni");
+        }
+
+        // Récupérer le congé
+        Conge conge = congeRepository.findByCongeUuid(uuid);
+        if (conge == null) {
+            log.error("Congé {} non trouvé", uuid);
+            return null;
+        }
+
+        // Vérifier les permissions - seul le propriétaire peut ajouter des justificatifs
+        User currentUser = getCurrentUser();
+        if (currentUser == null) {
+            log.error("Aucun utilisateur authentifié");
+            return null;
+        }
+
+        // Vérifier que l'utilisateur est le propriétaire du congé
+        if (!conge.getUser().getId().equals(currentUser.getId())) {
+            log.error("L'utilisateur {} n'est pas autorisé à modifier le congé {}", currentUser.getEmail(), uuid);
+            throw new ValidationException("Vous n'êtes pas autorisé à modifier ce congé");
+        }
+
+        // Vérifier que le congé est en attente
+        if (conge.getCongeStatus() != CongeStatus.ENATTENTE) {
+            log.error("Le congé {} n'est pas en attente (statut: {})", uuid, conge.getCongeStatus());
+            throw new ValidationException("Les justificatifs ne peuvent être ajoutés que pour les congés en attente");
+        }
+
+        // Ajouter les justificatifs via le service dédié
+        log.info("Ajout de {} justificatif(s) au congé {} par l'utilisateur {}",
+                files.size(), uuid, currentUser.getEmail());
+
+        try {
+            List<JustificatifDto> uploadedJustificatifs = justificatifService.uploadJustificatifs(uuid, files);
+            log.info("{} justificatif(s) ajouté(s) avec succès au congé {}", uploadedJustificatifs.size(), uuid);
+
+            // Recharger le congé pour obtenir les justificatifs mis à jour
+            Conge updatedConge = congeRepository.findByCongeUuid(uuid);
+            return mapCongeWithFiles(updatedConge);
+        } catch (Exception e) {
+            log.error("Erreur lors de l'ajout de justificatifs au congé {} : {}", uuid, e.getMessage());
+            throw new ValidationException("Erreur lors de l'ajout des justificatifs : " + e.getMessage());
+        }
     }
 
     /**
@@ -390,7 +496,7 @@ public class CongeServiceImpl implements CongeService {
 
     /**
      * Récupère les demandes de congés avec pagination et filtrage.
-     * 
+     *
      * @param status Filtre par statut (all, ENATTENTE, ACCEPTER, REFUSER)
      * @param searchTerm Terme de recherche (nom, prénom)
      * @param page Numéro de page (0-based)
@@ -401,10 +507,10 @@ public class CongeServiceImpl implements CongeService {
     @Transactional(readOnly = true)
     public PaginatedLeaveRequestResponse getLeaveRequestsPaginated(
             String status, String searchTerm, int page, int size) {
-        
+
         // Récupérer toutes les demandes
         List<Conge> allConges = congeRepository.findAll();
-        
+
         // Filtrer par statut (gérer les mappings PENDING/APPROVED/REJECTED du frontend)
         List<Conge> filteredConges = allConges.stream()
                 .filter(conge -> {
@@ -432,7 +538,7 @@ public class CongeServiceImpl implements CongeService {
                            (user.getPrenom() != null && user.getPrenom().toLowerCase().contains(search));
                 })
                 .collect(Collectors.toList());
-        
+
         // Calculer les statistiques globales
         long pendingCount = allConges.stream()
                 .filter(c -> c.getCongeStatus() == CongeStatus.ENATTENTE)
@@ -443,21 +549,21 @@ public class CongeServiceImpl implements CongeService {
         long rejectedCount = allConges.stream()
                 .filter(c -> c.getCongeStatus() == CongeStatus.REFUSER)
                 .count();
-        
+
         // Calculer la pagination
         long totalElements = filteredConges.size();
         int totalPages = (int) Math.ceil((double) totalElements / size);
-        
+
         // Extraire la page demandée
         int start = page * size;
         int end = Math.min(start + size, filteredConges.size());
         List<Conge> pageConges = filteredConges.subList(start, end);
-        
+
         // Convertir en LeaveRequestDto
         List<LeaveRequestDto> leaveRequests = pageConges.stream()
                 .map(this::mapCongeToLeaveRequestDto)
                 .collect(Collectors.toList());
-        
+
         return PaginatedLeaveRequestResponse.builder()
                 .success(true)
                 .message("Liste des demandes récupérée avec succès")
@@ -475,7 +581,7 @@ public class CongeServiceImpl implements CongeService {
     /**
      * Refuse un congé avec un motif de refus.
      * Le motif est stocké dans annotationRH.
-     * 
+     *
      * @param uuid UUID du congé
      * @param motifRefus Motif du refus
      * @return Le congé mis à jour
@@ -487,44 +593,44 @@ public class CongeServiceImpl implements CongeService {
         if (conge == null) {
             return null;
         }
-        
+
         conge.setCongeStatus(CongeStatus.REFUSER);
         conge.setAnnotationRH(motifRefus);
-        
+
         Conge savedConge = congeRepository.save(conge);
         return mapCongeWithFiles(savedConge);
     }
 
     /**
      * Convertit une entité Conge en LeaveRequestDto avec calcul des absences et retards.
-     * 
+     *
      * @param conge L'entité Conge à convertir
      * @return Le DTO LeaveRequestDto
      */
     private LeaveRequestDto mapCongeToLeaveRequestDto(Conge conge) {
         User user = conge.getUser();
-        
+
         // Calculer les absences et retards de l'employé
         int nombreAbsences = 0;
         int nombreRetards = 0;
-        
+
         if (user != null) {
             LocalDate now = LocalDate.now();
             LocalDate sixMonthsAgo = now.minusMonths(6);
             Date startDate = Date.from(sixMonthsAgo.atStartOfDay(ZoneId.systemDefault()).toInstant());
             Date endDate = Date.from(now.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant());
-            
+
             List<Pointage> pointages = pointageRepository.findByUserAndDateBetween(user, startDate, endDate);
-            
+
             nombreAbsences = (int) pointages.stream()
                     .filter(p -> p.getHeureArrivee() == null && p.getHeureDepart() == null)
                     .count();
-            
+
             nombreRetards = (int) pointages.stream()
                     .filter(p -> p.getStatut() == PointageStatus.RETARD)
                     .count();
         }
-        
+
         // Créer EmployeeInfoDto
         EmployeeInfoDto employeeInfo = EmployeeInfoDto.builder()
                 .id(user != null ? user.getId() : null)
@@ -535,7 +641,7 @@ public class CongeServiceImpl implements CongeService {
                 .nombreAbsences(nombreAbsences)
                 .nombreRetards(nombreRetards)
                 .build();
-        
+
         // Créer TypeCongeDto
         TypeCongeDto typeCongeDto = null;
         if (conge.getTypeConge() != null) {
@@ -547,19 +653,19 @@ public class CongeServiceImpl implements CongeService {
                     .description(typeConge.getDescription())
                     .build();
         }
-        
+
         // Calculer la durée en jours
         int duree = 0;
         if (conge.getDateDebut() != null && conge.getDateFin() != null) {
             duree = (int) ChronoUnit.DAYS.between(conge.getDateDebut(), conge.getDateFin()) + 1;
         }
-        
+
         // Déterminer le motif de refus (stocké dans annotationRH si le statut est REFUSER)
         String motifRefus = null;
         if (conge.getCongeStatus() == CongeStatus.REFUSER && conge.getAnnotationRH() != null) {
             motifRefus = conge.getAnnotationRH();
         }
-        
+
         return LeaveRequestDto.builder()
                 .id(conge.getId())
                 .employe(employeeInfo)
@@ -576,7 +682,7 @@ public class CongeServiceImpl implements CongeService {
 
     /**
      * Mappe les statuts du frontend (PENDING, APPROVED, REJECTED) vers les statuts du backend.
-     * 
+     *
      * @param frontendStatus Statut du frontend (PENDING, APPROVED, REJECTED, pending, approved, rejected, ENATTENTE, ACCEPTER, REFUSER)
      * @return Le statut CongeStatus correspondant
      */
@@ -598,5 +704,18 @@ public class CongeServiceImpl implements CongeService {
             default:
                 throw new IllegalArgumentException("Unknown status: " + frontendStatus);
         }
+    }
+
+
+    @Override
+    @Transactional
+    public CongeDto addCommentaireRH(UUID uuid, String commentaireRH) {
+        Conge conge = congeRepository.findByCongeUuid(uuid);
+        if (conge == null) {
+            return null;
+        }
+        conge.setCommentaireEmployee(commentaireRH);
+        Conge savedConge = congeRepository.save(conge);
+        return mapCongeWithFiles(savedConge);
     }
 }

@@ -21,6 +21,15 @@ public interface JustificatifService {
     JustificatifDto uploadJustificatif(UUID congeUuid, MultipartFile file);
     
     /**
+     * Upload plusieurs justificatifs pour un congé.
+     *
+     * @param congeUuid L'UUID du congé
+     * @param files Les fichiers à uploader
+     * @return Liste des DTOs des justificatifs créés
+     */
+    List<JustificatifDto> uploadJustificatifs(UUID congeUuid, List<MultipartFile> files);
+
+    /**
      * Récupère tous les justificatifs d'un congé.
      * 
      * @param congeUuid L'UUID du congé
@@ -35,5 +44,11 @@ public interface JustificatifService {
      * @return true si la suppression a réussi
      */
     boolean deleteJustificatif(UUID justificatifUuid);
-}
 
+    /**
+     * Récupère un justificatif par son UUID (nom de fichier).
+     * @param uuid L'UUID du justificatif
+     * @return Le DTO du justificatif ou null si non trouvé
+     */
+    JustificatifDto getJustificatifByUuid(UUID uuid);
+}
