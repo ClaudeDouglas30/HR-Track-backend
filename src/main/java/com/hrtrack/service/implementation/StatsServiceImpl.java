@@ -8,12 +8,14 @@ import com.hrtrack.domain.entities.*;
 import com.hrtrack.repository.*;
 import com.hrtrack.service.StatsService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class StatsServiceImpl implements StatsService {
@@ -30,39 +32,70 @@ public class StatsServiceImpl implements StatsService {
         YearMonth thisMonth = YearMonth.now();
 
         Date dateParam = Date.from(now.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        log.info("getUserStats called with email: {}, LocalDate: {}, Date: {}", email, now, dateParam);
 
+        // Correction : passer 'now' (LocalDate) au lieu de 'dateParam' (Date)
+        int totalCongeAccepte = 0;
+        try {
+            log.info("Calling congeRepository.countByUserIdAndStatusAndDateFinBefore...");
+            totalCongeAccepte = congeRepository.countByUserIdAndStatusAndDateFinBefore(
+                user.getId(), CongeStatus.valueOf("ACCEPTER"), now
+            );
+            log.info("congeRepository.countByUserIdAndStatusAndDateFinBefore returned: {}", totalCongeAccepte);
+        } catch (Exception e) {
+            log.error("Error in congeRepository.countByUserIdAndStatusAndDateFinBefore", e);
+            throw e;
+        }
 
-        // 1. Nombre total de congés acceptés déjà passés
-        int totalCongeAccepte = congeRepository.countByUserIdAndStatusAndDateFinBefore(
-            user.getId(), CongeStatus.valueOf("ACCEPTER"), dateParam
-        );
+        Set<LocalDate> joursPointes = new HashSet<>();
+        try {
+            log.info("Calling pointageRepository.findDistinctDatesByUserId...");
+            joursPointes = pointageRepository.findDistinctDatesByUserId(
+                user.getId(),
+                thisMonth.getYear(),
+                thisMonth.getMonthValue()
+            ).stream()
+            .map(d -> d.toInstant().atZone(ZoneId.systemDefault()).toLocalDate())
+            .collect(Collectors.toSet());
+            log.info("pointageRepository.findDistinctDatesByUserId returned: {} dates", joursPointes.size());
+        } catch (Exception e) {
+            log.error("Error in pointageRepository.findDistinctDatesByUserId", e);
+            throw e;
+        }
 
-        // 2. Taux de présence (nb jours pointés / nb jours ouvrés du mois)
-        Set<LocalDate> joursPointes = pointageRepository.findDistinctDatesByUserId(
-                        user.getId(),
-                        thisMonth.getYear(),
-                        thisMonth.getMonthValue()
-                ).stream()
-                .map(d -> d.toInstant().atZone(ZoneId.systemDefault()).toLocalDate())
-                .collect(Collectors.toSet());
         int joursOuvres = (int) thisMonth.atEndOfMonth().datesUntil(thisMonth.atEndOfMonth().plusDays(1))
             .filter(d -> d.getDayOfWeek().getValue() < 6).count();
         double tauxPresence = joursOuvres == 0 ? 0 : (double) joursPointes.size() / joursOuvres;
 
-        // 3. Nombre de jours distincts pointés
         int nbJoursPointes = joursPointes.size();
 
-        // 4. Nombre de messages envoyés et reçus
-        int messagesEnvoyes = messageRepository.countBySenderId(user.getId());
-        int messagesRecus = messageRepository.countByReceiverId(user.getId());
+        int messagesEnvoyes = 0;
+        int messagesRecus = 0;
+        try {
+            log.info("Calling messageRepository.countBySenderId...");
+            messagesEnvoyes = messageRepository.countBySenderId(user.getId());
+            log.info("messageRepository.countBySenderId returned: {}", messagesEnvoyes);
+            log.info("Calling messageRepository.countByReceiverId...");
+            messagesRecus = messageRepository.countByReceiverId(user.getId());
+            log.info("messageRepository.countByReceiverId returned: {}", messagesRecus);
+        } catch (Exception e) {
+            log.error("Error in messageRepository.countBySenderId or countByReceiverId", e);
+            throw e;
+        }
 
-        // 5. Nombre d'heures totales effectuées ce mois
         double heuresEffectueesMois = 0;
         for (LocalDate jour : joursPointes) {
-            Date dateParams = Date.from(jour.atStartOfDay(ZoneId.systemDefault()).toInstant());
-            LocalTime premierPointage = pointageRepository.findFirstPointageTimeByUserIdAndDate(user.getId(), dateParams);
-            if (premierPointage != null) {
-                heuresEffectueesMois += Duration.between(premierPointage, LocalTime.of(17, 0)).toMinutes() / 60.0;
+            try {
+                Date dateParams = Date.from(jour.atStartOfDay(ZoneId.systemDefault()).toInstant());
+                log.info("Calling pointageRepository.findFirstPointageTimeByUserIdAndDate for date {}...", dateParams);
+                LocalTime premierPointage = pointageRepository.findFirstPointageTimeByUserIdAndDate(user.getId(), dateParams);
+                log.info("pointageRepository.findFirstPointageTimeByUserIdAndDate returned: {}", premierPointage);
+                if (premierPointage != null) {
+                    heuresEffectueesMois += Duration.between(premierPointage, LocalTime.of(17, 0)).toMinutes() / 60.0;
+                }
+            } catch (Exception e) {
+                log.error("Error in pointageRepository.findFirstPointageTimeByUserIdAndDate", e);
+                throw e;
             }
         }
 
@@ -80,14 +113,35 @@ public class StatsServiceImpl implements StatsService {
     public StatsRhDto getRhStats() {
         LocalDate now = LocalDate.now();
         Date dateParam = Date.from(now.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        log.info("getRhStats called with LocalDate: {} and Date: {}", now, dateParam);
         // 1. Nombre total d'employés
+        log.info("Calling userRepository.countByRole...");
         int totalEmployes = userRepository.countByRole(Role.valueOf("EMPLOYEE"));
+        log.info("userRepository.countByRole returned: {}", totalEmployes);
         // 2. Nombre de demandes de congé en attente
+        log.info("Calling congeRepository.countByStatus...");
         int demandesCongeEnAttente = congeRepository.countByStatus(CongeStatus.valueOf("ENATTENTE"));
+        log.info("congeRepository.countByStatus returned: {}", demandesCongeEnAttente);
         // 3. Nombre de pointages uniques aujourd'hui
-        int pointagesUniquesAujourdhui = pointageRepository.countDistinctUserIdByDate(dateParam);
+        log.info("Calling pointageRepository.countDistinctUserIdByDate...");
+        int pointagesUniquesAujourdhui = 0;
+        try {
+            pointagesUniquesAujourdhui = pointageRepository.countDistinctUserIdByDate(dateParam);
+            log.info("pointageRepository.countDistinctUserIdByDate returned: {}", pointagesUniquesAujourdhui);
+        } catch (Exception e) {
+            log.error("Error in pointageRepository.countDistinctUserIdByDate", e);
+            throw e;
+        }
         // 4. Nombre d'utilisateurs en congé (congé accepté, non terminé)
-        int utilisateursEnConge = congeRepository.countUsersEnConge(dateParam);
+        log.info("Calling congeRepository.countUsersEnConge...");
+        int utilisateursEnConge = 0;
+        try {
+            utilisateursEnConge = congeRepository.countUsersEnConge(now); // Use LocalDate
+            log.info("congeRepository.countUsersEnConge returned: {}", utilisateursEnConge);
+        } catch (Exception e) {
+            log.error("Error in congeRepository.countUsersEnConge", e);
+            throw e;
+        }
         return StatsRhDto.builder()
                 .totalEmployes(totalEmployes)
                 .demandesCongeEnAttente(demandesCongeEnAttente)

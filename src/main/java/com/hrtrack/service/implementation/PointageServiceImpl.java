@@ -34,29 +34,27 @@ public class PointageServiceImpl implements IPointageService {
 
     @Override
     public PointageResponse pointer(PointageRequest request, Long userId) throws Exception {
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        List<Pointage> pointageList = pointageRepository.findByUserId(userId);
-        try {
-            if (pointageList.size() <2) {
-                Pointage pointage = new Pointage();
-                pointage.setDate(java.sql.Date.valueOf(LocalDate.now()));
-                pointage.setHeureArrivee(request.heureEntree());
-                pointage.setHeureDepart(request.heureSortie());
-                pointage.setStatut(calculerStatus(request.heureEntree()));
-                pointage.setUser(user);
+        LocalDate today = LocalDate.now();
+        java.sql.Date todaySql = java.sql.Date.valueOf(today);
+        List<Pointage> pointagesDuJour = pointageRepository.findByUserIdAndDate(userId, todaySql);
 
-                return pointageMapper.toResponse(pointageRepository.save(pointage));
-            }
-            else{
-                throw new Exception("on ne peut faire que deux pointage par jour ");
-            }
+        if (pointagesDuJour.size() >= 2) {
+            throw new Exception("On ne peut faire que deux pointages par jour");
         }
-        catch (Exception e) {
 
-            throw new Exception("une erreur est survenue lors du pointage");
+        try {
+            Pointage pointage = new Pointage();
+            pointage.setDate(todaySql);
+            pointage.setHeureArrivee(request.heureEntree());
+            pointage.setHeureDepart(request.heureSortie());
+            pointage.setStatut(calculerStatus(request.heureEntree()));
+            pointage.setUser(user);
+            return pointageMapper.toResponse(pointageRepository.save(pointage));
+        } catch (Exception e) {
+            throw new Exception("Une erreur est survenue lors du pointage");
         }
 
     }

@@ -24,6 +24,8 @@ import com.hrtrack.repository.TypeCongeRepository;
 import com.hrtrack.repository.UserRepository;
 import com.hrtrack.service.CongeService;
 import com.hrtrack.service.JustificatifService;
+import com.hrtrack.service.MessageService;
+import com.hrtrack.domain.requests.CreateMessageRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -60,6 +62,7 @@ public class CongeServiceImpl implements CongeService {
     private final JustificatifService justificatifService;
     private final PointageRepository pointageRepository;
     private final JustificatifRepository justificatifRepository;
+    private final MessageService messageService;
 
     @Value("${application.upload.path:uploads/justificatifs}")
     private String uploadPath;
@@ -126,6 +129,18 @@ public class CongeServiceImpl implements CongeService {
 
         conge.setCongeStatus(status);
         Conge savedConge = congeRepository.save(conge);
+
+        // Envoyer un message automatique à l'utilisateur ayant fait la demande
+        try {
+            CreateMessageRequest messageRequest = new CreateMessageRequest();
+            messageRequest.setReceiverId(conge.getUser().getId());
+            messageRequest.setSubject("Statut de votre demande de congé modifié");
+            messageRequest.setContent("Bonjour " + conge.getUser().getNom() + ",\n\nLe statut de votre demande de congé a été changé à : " + status + ".");
+            messageService.sendMessage(messageRequest);
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi du message automatique de changement de statut de congé", e);
+        }
+
         return mapCongeWithFiles(savedConge);
     }
 
@@ -402,6 +417,18 @@ public class CongeServiceImpl implements CongeService {
 
         conge.setAnnotationRH(annotationRH);
         Conge savedConge = congeRepository.save(conge);
+
+        // Envoyer un message automatique à l'utilisateur ayant soumis le congé
+        try {
+            CreateMessageRequest messageRequest = new CreateMessageRequest();
+            messageRequest.setReceiverId(conge.getUser().getId());
+            messageRequest.setSubject("Annotation RH sur votre demande de congé");
+            messageRequest.setContent("Bonjour " + conge.getUser().getNom() + ",\n\nUne annotation RH a été ajoutée à votre demande de congé :\n" + annotationRH);
+            messageService.sendMessage(messageRequest);
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi du message automatique d'annotation RH", e);
+        }
+
         return mapCongeWithFiles(savedConge);
     }
 
@@ -598,6 +625,18 @@ public class CongeServiceImpl implements CongeService {
         conge.setAnnotationRH(motifRefus);
 
         Conge savedConge = congeRepository.save(conge);
+
+        // Envoyer un message automatique à l'utilisateur ayant fait la demande
+        try {
+            CreateMessageRequest messageRequest = new CreateMessageRequest();
+            messageRequest.setReceiverId(conge.getUser().getId());
+            messageRequest.setSubject("Votre demande de congé a été rejetée");
+            messageRequest.setContent("Bonjour " + conge.getUser().getNom() + ",\n\nVotre demande de congé a été rejetée pour le motif suivant :\n" + motifRefus);
+            messageService.sendMessage(messageRequest);
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi du message automatique de rejet de congé", e);
+        }
+
         return mapCongeWithFiles(savedConge);
     }
 

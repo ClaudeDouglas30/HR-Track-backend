@@ -16,6 +16,7 @@ public interface PointageRepository extends JpaRepository<Pointage, Long> {
 
     // Pour un employé
     List<Pointage> findByUserId(Long userId);
+    List<Pointage> findByUserIdAndDate(Long userId, Date date);
 
     @Query("SELECT DISTINCT p.date FROM Pointage p WHERE p.user.id = :userId AND YEAR(p.date) = :year AND MONTH(p.date) = :month")
     java.util.List<Date> findDistinctDatesByUserId(@Param("userId") Long userId, @Param("year") int year, @Param("month") int month);
